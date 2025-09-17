@@ -74,3 +74,16 @@ module "presigned_url_function" {
     Environment = var.environment
   }
 }
+
+# --- ADD THE NEW API GATEWAY MODULE ---
+module "api_gateway" {
+  source            = "../../modules/apigateway"
+  project_name      = var.project_name
+  environment       = var.environment
+  lambda_invoke_arn = module.presigned_url_function.function_invoke_arn
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+}
