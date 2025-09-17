@@ -91,3 +91,59 @@ resource "aws_iam_role_policy_attachment" "attachment" {
   role       = aws_iam_role.lambda_execution_role.name
   policy_arn = aws_iam_policy.lambda_policy.arn
 }
+
+
+resource "aws_iam_role" "presigned_url_lambda_role" {
+  name = "${var.project_name}-presigned-url-role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+data "aws_iam_policy_document" "presigned_url_lambda_policy_document" {
+  # Allow creating and writing to CloudWatch Logs
+  statement {
+    sid       = "AllowCloudWatchLogging"
+    effect    = "Allow"
+    actions   = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+
+  # Allow generating a presigned URL to PUT objects into the specific S3 bucket
+  statement {
+    sid    = "AllowS3PutObject"
+    effect = "Allow"
+    actions = [
+      "s3:PutObject"
+    ]
+    resources = [
+      "${var.receipt_bucket_arn}/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "presigned_url_lambda_policy" {
+  name   = "${var.project_name}-presigned-url-policy-${var.environment}"
+  policy = data.aws_iam_policy_document.presigned_url_lambda_policy_document.json
+}
+
+resource "aws_iam_role_policy_attachment" "presigned_url_attachment" {
+  role       = aws_iam_role.presigned_url_lambda_role.name
+  policy_arn = aws_iam_policy.presigned_url_lambda_policy.arn
+}
