@@ -39,8 +39,7 @@ resource "aws_apigatewayv2_stage" "default_stage" {
 resource "aws_lambda_permission" "allow_api_gateway_invoke" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = var.lambda_invoke_arn # We use the invoke ARN which doesn't have the alias/version
   principal     = "apigateway.amazonaws.com"
-
+  function_name = var.lambda_function_arn 
   source_arn = "${aws_apigatewayv2_api.http_api.execution_arn}/*/*"
 }

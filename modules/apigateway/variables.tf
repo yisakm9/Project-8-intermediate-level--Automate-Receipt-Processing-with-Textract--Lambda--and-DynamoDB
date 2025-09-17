@@ -18,3 +18,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "lambda_function_arn" {
+  description = "The standard ARN of the Lambda function for setting permissions."
+  type        = string
+}

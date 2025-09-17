@@ -77,10 +77,11 @@ module "presigned_url_function" {
 
 # --- ADD THE NEW API GATEWAY MODULE ---
 module "api_gateway" {
-  source            = "../../modules/apigateway"
-  project_name      = var.project_name
-  environment       = var.environment
-  lambda_invoke_arn = module.presigned_url_function.function_invoke_arn
+  source              = "../../modules/apigateway"
+  project_name        = var.project_name
+  environment         = var.environment
+  lambda_invoke_arn   = module.presigned_url_function.function_invoke_arn # Still needed for the integration
+  lambda_function_arn = module.presigned_url_function.function_arn      # Pass the standard ARN for permissions
 
   tags = {
     Project     = var.project_name
