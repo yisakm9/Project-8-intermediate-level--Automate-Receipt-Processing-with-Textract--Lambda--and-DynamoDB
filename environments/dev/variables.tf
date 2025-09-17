@@ -15,3 +15,12 @@ variable "aws_region" {
   type        = string
   default     = "us-east-1"
 }
+variable "sender_email" {
+  description = "The email address notifications will be sent from. Must be verified in SES."
+  type        = string
+}
+
+variable "recipient_email" {
+  description = "The email address that will receive the notification emails."
+  type        = string
+}
