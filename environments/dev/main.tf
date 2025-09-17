@@ -88,3 +88,33 @@ module "api_gateway" {
     Environment = var.environment
   }
 }
+
+
+# --- ADD NEW S3 BUCKET FOR FRONTEND ASSETS ---
+module "frontend_s3_bucket" {
+  source       = "../../modules/s3"
+  # Use a different name to distinguish it from the uploads bucket
+  project_name = "${var.project_name}-frontend" 
+  environment  = var.environment
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+}
+
+# --- ADD THE NEW CLOUDFRONT MODULE ---
+module "cloudfront" {
+  source                         = "../../modules/cloudfront"
+  project_name                   = var.project_name
+  environment                    = var.environment
+  s3_bucket_id                   = module.frontend_s3_bucket.receipt_bucket_id
+  s3_bucket_regional_domain_name = module.frontend_s3_bucket.receipt_bucket_regional_domain_name # We need to add this output to the S3 module
+  api_gateway_id                 = module.api_gateway.api_id
+  aws_region                     = var.aws_region
+  
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+}
