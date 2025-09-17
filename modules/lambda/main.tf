@@ -45,7 +45,20 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
   lambda_function {
     lambda_function_arn = aws_lambda_function.receipt_processor.arn
     events              = ["s3:ObjectCreated:*"] # Trigger on any object creation event
-    filter_prefix       = "uploads/"             # Optional: only trigger for files in an 'uploads/' folder
+    filter_prefix       = "uploads/" 
+    filter_suffix       = ".jpg"            # Optional: only trigger for files in an 'uploads/' folder
+  }
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.receipt_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+    filter_suffix       = ".png"
+  }
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.receipt_processor.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+    filter_suffix       = ".jpeg"
   }
 
   depends_on = [aws_lambda_permission.allow_s3_invoke]
