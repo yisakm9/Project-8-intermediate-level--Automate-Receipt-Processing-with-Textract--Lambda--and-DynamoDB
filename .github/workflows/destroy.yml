@@ -1,56 +1,33 @@
-name: 'Destroy Dev Environment'
+name: Destroy Dev Environment
 
+# Define the confirmation phrase as an environment variable for clarity
+env:
+  CONFIRMATION_PHRASE: 'destroy-dev-environment'
+
+# This workflow is triggered MANUALLY and requires a confirmation input
 on:
   workflow_dispatch:
     inputs:
       confirmation:
-        description: 'MANDATORY: To prevent accidental destruction, type "destroy" to confirm.'
+        description: 'To confirm, type exactly: destroy-dev-environment'
         required: true
         default: 'do-not-destroy'
 
 jobs:
-  terraform-destroy:
-    name: 'Terraform Destroy Dev'
+  destroy:
+    name: Destroy Dev Infrastructure
     runs-on: ubuntu-latest
     
-    environment: dev
-
-    env:
-      AWS_REGION: us-east-1
-      TF_WORKING_DIR: 'environments/dev'
-      CONFIRMATION_PHRASE: "destroy"
-
     permissions:
-      id-token: write
-      contents: read
+      id-token: write 
+      contents: read  
 
     steps:
-      - name: 'Checkout Repository'
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: 'Configure AWS Credentials (OIDC)'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::456202167790:role/githubaction # IMPORTANT: Replace with your OIDC role ARN
-          aws-region: us-east-1
-          role-session-name: GitHubActions-Terraform-Destroy
-
-      - name: 'Create Dummy Lambda Artifact for Destroy'
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: |
-          mkdir -p ../../src/receipt_processor
-          touch ../../src/receipt_processor/placeholder.txt
-          echo "Created dummy source directory to allow terraform init to run."
-
-      - name: 'Set up Terraform'
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.13.1
-          
-      - name: 'Terraform Init'
-        run: terraform -chdir="${{ env.TF_WORKING_DIR }}" init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET_DEV }}"
-
-      - name: 'Verify Destroy Confirmation'
+      
+      - name: Verify Destroy Confirmation
         run: |
           if [ "${{ github.event.inputs.confirmation }}" != "${{ env.CONFIRMATION_PHRASE }}" ]; then
             echo "❌ ERROR: Confirmation phrase did not match. Aborting workflow."
@@ -58,6 +35,29 @@ jobs:
           else
             echo "✅ Confirmation phrase matches. Proceeding with destroy operation."
           fi
-      
-      - name: 'Terraform Destroy'
-        run: terraform -chdir="${{ env.TF_WORKING_DIR }}" destroy -auto-approve -var-file="terraform.tfvars"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::456202167790:role/githubaction
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.1         
+
+      - name: Terraform Init
+        id: init
+        run: terraform init
+        working-directory: ./environments/dev
+
+      - name: Terraform Plan Destroy
+        id: plan
+        run: terraform plan -destroy -no-color -var-file="terraform.tfvars"
+        working-directory: ./environments/dev
+
+      - name: Terraform Destroy
+        id: destroy
+        run: terraform destroy -auto-approve -var-file="terraform.tfvars"
+        working-directory: ./environments/dev```
