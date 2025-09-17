@@ -1,4 +1,4 @@
-// This URL will be replaced by the CI/CD pipeline.
+// This URL will be replaced by the  CI/CD pipeline.
 const API_ENDPOINT = '%%API_BASE_URL%%/api/uploads';
 
 const fileInput = document.getElementById('file-input');
