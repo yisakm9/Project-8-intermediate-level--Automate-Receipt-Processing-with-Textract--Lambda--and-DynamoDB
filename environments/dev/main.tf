@@ -40,6 +40,7 @@ module "iam_role" {
 }
 
 # Add the new Lambda function module
+# Update the Lambda function module call
 module "lambda_function" {
   source              = "../../modules/lambda"
   project_name        = var.project_name
@@ -47,9 +48,18 @@ module "lambda_function" {
   lambda_iam_role_arn = module.iam_role.lambda_execution_role_arn
   receipt_bucket_id   = module.receipt_s3_bucket.receipt_bucket_id
   dynamodb_table_name = module.receipt_database.table_name
+  sender_email        = var.sender_email
+  recipient_email     = var.recipient_email
 
   tags = {
     Project     = var.project_name
     Environment = var.environment
   }
+}
+
+
+# Add the new SES module
+module "ses_identity" {
+  source             = "../../modules/ses"
+  notification_email = var.sender_email
 }

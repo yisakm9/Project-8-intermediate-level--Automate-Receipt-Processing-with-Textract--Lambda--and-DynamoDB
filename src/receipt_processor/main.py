@@ -12,9 +12,12 @@ logger.setLevel(logging.INFO)
 s3_client = boto3.client('s3')
 textract_client = boto3.client('textract')
 dynamodb = boto3.resource('dynamodb')
+ses_client = boto3.client('ses') # <-- ADD SES CLIENT
 
-# Get the DynamoDB table name from an environment variable
+# Get environment variables
 TABLE_NAME = os.environ['DYNAMODB_TABLE_NAME']
+SENDER_EMAIL = os.environ['SENDER_EMAIL']
+RECIPIENT_EMAIL = os.environ['RECIPIENT_EMAIL']
 table = dynamodb.Table(TABLE_NAME)
 
 def handler(event, context):
@@ -34,20 +37,15 @@ def handler(event, context):
         # 2. Call Amazon Textract to analyze the document
         response = textract_client.analyze_document(
             Document={'S3Object': {'Bucket': bucket_name, 'Name': object_key}},
-            FeatureTypes=['FORMS'] # Use FORMS to extract key-value pairs
+            FeatureTypes=['FORMS']
         )
-        logger.info("## TEXTRACT RESPONSE")
-        logger.info(json.dumps(response))
-
-        # 3. Process the Textract response to find relevant data
-        # (This is a simplified example; real-world parsing can be more complex)
+        
+        # 3. Process the Textract response
         extracted_data = {}
         for block in response['Blocks']:
             if block['BlockType'] == 'LINE':
-                # A simple example: look for a line containing "TOTAL"
                 if 'TOTAL' in block['Text'].upper():
                     extracted_data['total_amount'] = block['Text']
-                # Add more parsing logic here for vendor, date, etc.
 
         logger.info(f"Extracted data: {extracted_data}")
         
@@ -61,13 +59,34 @@ def handler(event, context):
             'extracted_data': extracted_data
         }
         
-        # Add any other fields you parsed
         if 'total_amount' in extracted_data:
             item['total_amount'] = extracted_data['total_amount']
 
         # 5. Store the data in the DynamoDB table
         table.put_item(Item=item)
         logger.info(f"Successfully stored receipt data in DynamoDB with ID: {receipt_id}")
+
+        # 6. Send a confirmation email using SES <-- NEW SECTION
+        email_subject = f"Receipt Processed Successfully: {object_key}"
+        email_body = f"""
+            Hello,
+
+            The receipt '{object_key}' has been successfully processed and its data has been stored.
+
+            Receipt ID: {receipt_id}
+            Extracted Data: {json.dumps(extracted_data, indent=2)}
+
+            Thank you!
+        """
+        ses_client.send_email(
+            Source=SENDER_EMAIL,
+            Destination={'ToAddresses': [RECIPIENT_EMAIL]},
+            Message={
+                'Subject': {'Data': email_subject},
+                'Body': {'Text': {'Data': email_body}}
+            }
+        )
+        logger.info(f"Successfully sent confirmation email to {RECIPIENT_EMAIL}")
 
         return {
             'statusCode': 200,

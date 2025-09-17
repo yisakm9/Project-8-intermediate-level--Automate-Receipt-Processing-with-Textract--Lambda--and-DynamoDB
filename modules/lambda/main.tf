@@ -16,11 +16,13 @@ resource "aws_lambda_function" "receipt_processor" {
 
   handler = "main.handler"
   runtime = "python3.9"
-  timeout = 30 # seconds
+  timeout = 60 # seconds
 
   environment {
     variables = {
       DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      SENDER_EMAIL        = var.sender_email
+      RECIPIENT_EMAIL     = var.recipient_email
     }
   }
 
