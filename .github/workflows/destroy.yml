@@ -16,7 +16,7 @@ jobs:
     environment: dev
 
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_REGION: us-east-1
       TF_WORKING_DIR: 'environments/dev'
       CONFIRMATION_PHRASE: "destroy"
 
@@ -31,23 +31,22 @@ jobs:
       - name: 'Configure AWS Credentials (OIDC)'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::456202167790:role/githubaction
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::456202167790:role/githubaction # IMPORTANT: Replace with your OIDC role ARN
+          aws-region: us-east-1
           role-session-name: GitHubActions-Terraform-Destroy
 
-      # --- THIS IS THE FIX ---
-      - name: 'Create Dummy Lambda Artifacts for Destroy'
+      - name: 'Create Dummy Lambda Artifact for Destroy'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
-          touch image-processing.zip
-          touch search-by-label.zip
-          echo "Created dummy zip files to allow terraform destroy to run."
+          mkdir -p ../../src/receipt_processor
+          touch ../../src/receipt_processor/placeholder.txt
+          echo "Created dummy source directory to allow terraform init to run."
 
       - name: 'Set up Terraform'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.13.1
-
+          
       - name: 'Terraform Init'
         run: terraform -chdir="${{ env.TF_WORKING_DIR }}" init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET_DEV }}"
 
@@ -61,4 +60,4 @@ jobs:
           fi
       
       - name: 'Terraform Destroy'
-        run: terraform -chdir="${{ env.TF_WORKING_DIR }}" destroy -auto-approve
+        run: terraform -chdir="${{ env.TF_WORKING_DIR }}" destroy -auto-approve -var-file="terraform.tfvars"
