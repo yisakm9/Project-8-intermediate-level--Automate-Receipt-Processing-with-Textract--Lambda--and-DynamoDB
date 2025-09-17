@@ -39,6 +39,8 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "encryption" {
 # resource.aws_s3_bucket_public_access_block "public_access_block": Blocks all public access.
 # This ensures that sensitive receipt data is never accidentally exposed to the internet.
 resource "aws_s3_bucket_public_access_block" "public_access_block" {
+   # Only create this resource if the variable is true
+  count = var.block_public_access ? 1 : 0
   bucket = aws_s3_bucket.receipt_bucket.id
 
   block_public_acls       = true

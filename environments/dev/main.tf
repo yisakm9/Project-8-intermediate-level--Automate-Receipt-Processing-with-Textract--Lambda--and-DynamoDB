@@ -98,6 +98,7 @@ module "frontend_s3_bucket" {
   # Use a different name to distinguish it from the uploads bucket
   project_name = "${var.project_name}-frontend" 
   environment  = var.environment
+  block_public_access = false # <-- TEMPORARILY DISABLE FOR DEBUGGING
 
   tags = {
     Project     = var.project_name

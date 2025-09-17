@@ -18,3 +18,8 @@ variable "allowed_cors_origin" {
   type        = string
   default     = ""
 }
+variable "block_public_access" {
+  description = "Whether to block all public access to the bucket. Should be true for production."
+  type        = bool
+  default     = true
+}
