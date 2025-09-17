@@ -49,11 +49,11 @@ jobs:
           echo "CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_distribution_domain_name)" >> $GITHUB_ENV
         working-directory: ./environments/dev
 
-      # --- FRONTEND DEPLOYMENT STEPS (SIMPLIFIED) ---
+      # --- FRONTEND DEPLOYMENT STEPS (SIMPLIFIED) 
       - name: Prepare Frontend Assets
         run: |
           # Use 'sed' to find our placeholder and replace it with the actual CloudFront domain
-          sed -i "s|%%API_BASE_URL%%|https://${{ env.CLOUDFRONT_DOMAIN }}|g" src/frontend/App.js
+          sed -i "s|%%API_BASE_URL%%|https://${{ env.CLOUDFRONT_DOMAIN }}|g" src/frontend/app.js
         
       - name: Deploy Frontend to S3
         run: aws s3 sync ./src/frontend/ s3://${{ env.FRONTEND_BUCKET_NAME }} --delete
