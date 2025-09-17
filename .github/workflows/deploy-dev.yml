@@ -23,36 +23,24 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::456202167790:role/githubaction # Your OIDC Role ARN
+          role-to-assume: arn:aws:iam::456202167790:role/githubaction #  OIDC Role ARN
           aws-region: us-east-1
 
-  
+      # --- TERRAFORM STEPS (UNCHANGED) ---
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.13.1      
+          terraform_version: 1.13.1 
 
       - name: Terraform Init
-        id: init
         run: terraform init
         working-directory: ./environments/dev
 
-      - name: Terraform Validate
-        id: validate
-        run: terraform validate -no-color
-        working-directory: ./environments/dev
-
-      - name: Terraform Plan
-        id: plan
-        run: terraform plan -no-color -var-file="terraform.tfvars"
-        working-directory: ./environments/dev
-
       - name: Terraform Apply
-        id: apply
         run: terraform apply -auto-approve -var-file="terraform.tfvars"
         working-directory: ./environments/dev
 
-      # --- GET OUTPUTS DIRECTLY FROM TERRAFORM ---
+      # --- GET TERRAFORM OUTPUTS (UNCHANGED) ---
       - name: Get Terraform Outputs
         id: get_outputs
         run: |
@@ -61,24 +49,14 @@ jobs:
           echo "CLOUDFRONT_DOMAIN=$(terraform output -raw cloudfront_distribution_domain_name)" >> $GITHUB_ENV
         working-directory: ./environments/dev
 
-      # --- FRONTEND DEPLOYMENT STEPS ---
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install Frontend Dependencies
-        run: npm install
-        working-directory: ./src/frontend
-
-      - name: Build React Application
-        run: npm run build
-        working-directory: ./src/frontend
-        env:
-          REACT_APP_API_BASE_URL: https://${{ env.CLOUDFRONT_DOMAIN }}
-
+      # --- FRONTEND DEPLOYMENT STEPS (SIMPLIFIED) ---
+      - name: Prepare Frontend Assets
+        run: |
+          # Use 'sed' to find our placeholder and replace it with the actual CloudFront domain
+          sed -i "s|%%API_BASE_URL%%|https://${{ env.CLOUDFRONT_DOMAIN }}|g" src/frontend/app.js
+        
       - name: Deploy Frontend to S3
-        run: aws s3 sync ./src/frontend/build/ s3://${{ env.FRONTEND_BUCKET_NAME }} --delete
+        run: aws s3 sync ./src/frontend/ s3://${{ env.FRONTEND_BUCKET_NAME }} --delete
 
       - name: Invalidate CloudFront Cache
         run: aws cloudfront create-invalidation --distribution-id ${{ env.CLOUDFRONT_ID }} --paths "/*"

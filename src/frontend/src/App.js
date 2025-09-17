@@ -1,60 +1,58 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+// This URL will be replaced by the CI/CD pipeline.
+const API_ENDPOINT = '%%API_BASE_URL%%/api/uploads';
 
-const API_ENDPOINT = `${process.env.REACT_APP_API_BASE_URL}/api/uploads`;
+const fileInput = document.getElementById('file-input');
+const uploadButton = document.getElementById('upload-button');
+const statusElement = document.getElementById('status');
 
-function App() {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [status, setStatus] = useState('Please select a receipt to upload.');
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleFileChange = (event) => {
-    setSelectedFile(event.target.files[0]);
-    setStatus('File selected. Click "Upload".');
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) {
-      setStatus('No file selected!');
-      return;
+uploadButton.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) {
+        statusElement.textContent = 'No file selected!';
+        return;
     }
 
-    setIsUploading(true);
-    setStatus('Requesting permission to upload...');
+    uploadButton.disabled = true;
+    statusElement.textContent = 'Requesting permission to upload...';
+
     try {
-      const response = await axios.post(API_ENDPOINT, {
-        fileName: selectedFile.name,
-        fileType: selectedFile.type,
-      });
+        // 1. Get the presigned URL from our API
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                fileName: file.name,
+                fileType: file.type,
+            }),
+        });
 
-      const { uploadUrl } = response.data;
-      setStatus('Permission granted. Now uploading...');
+        if (!response.ok) {
+            throw new Error(`Failed to get presigned URL: ${response.statusText}`);
+        }
 
-      await axios.put(uploadUrl, selectedFile, {
-        headers: {
-          'Content-Type': selectedFile.type,
-        },
-      });
+        const { uploadUrl } = await response.json();
+        statusElement.textContent = 'Permission granted. Now uploading...';
 
-      setStatus(`Success! Your receipt has been submitted for processing.`);
+        // 2. Upload the file directly to S3 using the presigned URL
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': file.type,
+            },
+            body: file,
+        });
+
+        if (!uploadResponse.ok) {
+            throw new Error(`S3 upload failed: ${uploadResponse.statusText}`);
+        }
+
+        statusElement.textContent = 'Success! Your receipt has been submitted for processing.';
     } catch (error) {
-      console.error('Upload failed:', error);
-      setStatus('Upload failed. Check the browser console for details.');
+        console.error('Upload failed:', error);
+        statusElement.textContent = `Upload failed: ${error.message}`;
     } finally {
-      setIsUploading(false);
+        uploadButton.disabled = false;
     }
-  };
-
-  return (
-    <div>
-      <h1>Receipt Upload Portal</h1>
-      <input type="file" onChange={handleFileChange} accept="image/png, image/jpeg" />
-      <button onClick={handleUpload} disabled={isUploading}>
-        {isUploading ? 'Uploading...' : 'Upload'}
-      </button>
-      <p>Status: {status}</p>
-    </div>
-  );
-}
-
-export default App;
+});
