@@ -62,4 +62,5 @@ module "lambda_function" {
 module "ses_identity" {
   source             = "../../modules/ses"
   notification_email = var.sender_email
+  notification_email = var.recipient_email
 }
