@@ -16,7 +16,6 @@ uploadButton.addEventListener('click', async () => {
     statusElement.textContent = 'Requesting permission to upload...';
 
     try {
-        // 1. Get the presigned URL from our API
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             headers: {
@@ -35,7 +34,6 @@ uploadButton.addEventListener('click', async () => {
         const { uploadUrl } = await response.json();
         statusElement.textContent = 'Permission granted. Now uploading...';
 
-        // 2. Upload the file directly to S3 using the presigned URL
         const uploadResponse = await fetch(uploadUrl, {
             method: 'PUT',
             headers: {
