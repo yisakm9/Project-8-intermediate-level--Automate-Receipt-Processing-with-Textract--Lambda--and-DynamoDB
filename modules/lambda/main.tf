@@ -1,93 +1,50 @@
-#### 📁 `modules/iam/main.tf`
+# data.archive_file "lambda_zip": Packages the Python source code into a .zip file.
+# Terraform will automatically create this zip archive during the apply step.
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../../src/receipt_processor"
+  output_path = "${path.module}/receipt_processor.zip"
+}
 
+# resource.aws_lambda_function "receipt_processor": Creates the Lambda function.
+resource "aws_lambda_function" "receipt_processor" {
+  function_name = "${var.project_name}-processor-${var.environment}"
+  role          = var.lambda_iam_role_arn
 
-# resource.aws_iam_role "lambda_execution_role": Creates the IAM role that our Lambda function will assume.
-# The assume_role_policy allows the Lambda service to use this role.
-resource "aws_iam_role" "lambda_execution_role" {
-  name = "${var.project_name}-lambda-role-${var.environment}"
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17",
-    Statement = [
-      {
-        Action    = "sts:AssumeRole",
-        Effect    = "Allow",
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-      }
-    ]
-  })
+  handler = "main.handler"
+  runtime = "python3.9"
+  timeout = 30 # seconds
+
+  environment {
+    variables = {
+      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+    }
+  }
 
   tags = var.tags
 }
 
-# data.aws_iam_policy_document "lambda_policy_document": Constructs the policy in a structured way.
-# We are defining the exact permissions our function needs.
-data "aws_iam_policy_document" "lambda_policy_document" {
-  # Allow creating and writing to CloudWatch Logs for debugging and monitoring.
-  statement {
-    sid       = "AllowCloudWatchLogging"
-    effect    = "Allow"
-    actions   = [
-      "logs:CreateLogGroup",
-      "logs:CreateLogStream",
-      "logs:PutLogEvents"
-    ]
-    resources = ["arn:aws:logs:*:*:*"]
-  }
-
-  # Allow reading objects from the specific S3 receipt bucket.
-  statement {
-    sid    = "AllowS3ReadAccess"
-    effect = "Allow"
-    actions = [
-      "s3:GetObject"
-    ]
-    resources = [
-      "${var.receipt_bucket_arn}/*" # Note the /* to allow access to objects within the bucket
-    ]
-  }
-
-  # Allow calling Amazon Textract to analyze documents.
-  statement {
-    sid    = "AllowTextractAccess"
-    effect = "Allow"
-    actions = [
-      "textract:AnalyzeDocument"
-    ]
-    resources = ["*"] # Textract actions are not resource-specific
-  }
-
-  # Allow writing items to the specific DynamoDB table.
-  statement {
-    sid    = "AllowDynamoDBWriteAccess"
-    effect = "Allow"
-    actions = [
-      "dynamodb:PutItem"
-    ]
-    resources = [var.dynamodb_table_arn]
-  }
-  
-  # Allow sending emails via SES.
-  statement {
-    sid    = "AllowSESSendEmail"
-    effect = "Allow"
-    actions = [
-      "ses:SendEmail"
-    ]
-    resources = ["*"] # SES SendEmail requires "*" unless you specify a sending identity ARN
-  }
+# resource.aws_lambda_permission "allow_s3_invoke": Grants the S3 service permission to invoke this Lambda function.
+resource "aws_lambda_permission" "allow_s3_invoke" {
+  statement_id  = "AllowS3Invoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.receipt_processor.function_name
+  principal     = "s3.amazonaws.com"
+  source_arn    = "arn:aws:s3:::${var.receipt_bucket_id}"
 }
 
-# resource.aws_iam_policy "lambda_policy": Creates the IAM policy from the document above.
-resource "aws_iam_policy" "lambda_policy" {
-  name   = "${var.project_name}-lambda-policy-${var.environment}"
-  policy = data.aws_iam_policy_document.lambda_policy_document.json
-}
+# resource.aws_s3_bucket_notification "bucket_notification": Configures the S3 bucket to trigger the Lambda function.
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket = var.receipt_bucket_id
 
-# resource.aws_iam_role_policy_attachment "attachment": Attaches the policy to the role.
-resource "aws_iam_role_policy_attachment" "attachment" {
-  role       = aws_iam_role.lambda_execution_role.name
-  policy_arn = aws_iam_policy.lambda_policy.arn
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.receipt_processor.arn
+    events              = ["s3:ObjectCreated:*"] # Trigger on any object creation event
+    filter_prefix       = "uploads/"             # Optional: only trigger for files in an 'uploads/' folder
+  }
+
+  depends_on = [aws_lambda_permission.allow_s3_invoke]
 }

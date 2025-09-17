@@ -38,3 +38,18 @@ module "iam_role" {
     Environment = var.environment
   }
 }
+
+# Add the new Lambda function module
+module "lambda_function" {
+  source              = "../../modules/lambda"
+  project_name        = var.project_name
+  environment         = var.environment
+  lambda_iam_role_arn = module.iam_role.lambda_execution_role_arn
+  receipt_bucket_id   = module.receipt_s3_bucket.receipt_bucket_id
+  dynamodb_table_name = module.receipt_database.table_name
+
+  tags = {
+    Project     = var.project_name
+    Environment = var.environment
+  }
+}

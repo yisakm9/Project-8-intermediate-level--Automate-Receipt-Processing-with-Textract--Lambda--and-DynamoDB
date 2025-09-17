@@ -8,18 +8,23 @@ variable "environment" {
   type        = string
 }
 
-variable "receipt_bucket_arn" {
-  description = "The ARN of the S3 bucket where receipts are stored."
+variable "lambda_iam_role_arn" {
+  description = "The ARN of the IAM role for the Lambda function."
   type        = string
 }
 
-variable "dynamodb_table_arn" {
-  description = "The ARN of the DynamoDB table for storing receipt data."
+variable "receipt_bucket_id" {
+  description = "The ID of the S3 bucket for receipts."
+  type        = string
+}
+
+variable "dynamodb_table_name" {
+  description = "The name of the DynamoDB table."
   type        = string
 }
 
 variable "tags" {
-  description = "A map of tags to assign to the IAM role."
+  description = "A map of tags to assign to the resources."
   type        = map(string)
   default     = {}
 }
