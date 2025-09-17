@@ -4,6 +4,8 @@ module "receipt_s3_bucket" {
   source       = "../../modules/s3"
   project_name = var.project_name
   environment  = var.environment
+  # We are passing the CloudFront domain name into the S3 module
+  allowed_cors_origin = "https://${module.cloudfront.cloudfront_distribution_domain_name}"
 
   tags = {
     Project     = var.project_name

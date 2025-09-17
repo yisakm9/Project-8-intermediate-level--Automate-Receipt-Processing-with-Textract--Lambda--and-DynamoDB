@@ -13,3 +13,8 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+variable "allowed_cors_origin" {
+  description = "The origin domain allowed for CORS requests (e.g., your CloudFront URL)."
+  type        = string
+  default     = ""
+}

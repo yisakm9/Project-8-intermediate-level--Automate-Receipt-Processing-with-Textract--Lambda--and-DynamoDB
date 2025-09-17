@@ -46,3 +46,18 @@ resource "aws_s3_bucket_public_access_block" "public_access_block" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
+
+# --- ADD THIS NEW RESOURCE ---
+# resource.aws_s3_bucket_cors_configuration "cors": Configures CORS for the bucket.
+# This is CRITICAL to allow the user's browser (running on the CloudFront domain)
+# to make a direct PUT request to this S3 bucket.
+resource "aws_s3_bucket_cors_configuration" "cors" {
+  bucket = aws_s3_bucket.receipt_bucket.id
+
+  cors_rule {
+    # We need to get the CloudFront domain as an input to this module
+    allowed_origins = [var.allowed_cors_origin] 
+    allowed_methods = ["PUT", "POST"]
+    allowed_headers = ["*"]
+  }
+}
